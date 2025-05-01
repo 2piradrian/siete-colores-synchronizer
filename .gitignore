@@ -1,0 +1,7 @@
+.env
+/build
+/dist
+/.idea
+*.jpg
+*.jpeg
+*.webp
