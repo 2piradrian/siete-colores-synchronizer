@@ -1,0 +1,8 @@
+.env
+/web
+/images
+/build
+/dist
+*.jpg
+*.jpeg
+*.webp
