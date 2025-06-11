@@ -124,7 +124,7 @@ def copy_and_convert_images():
                                 img = img.transpose(Image.ROTATE_90)
 
                         img = img.convert("RGB")
-                        img.save(webp_image_path, "WebP", quality=72)
+                        img.save(webp_image_path, "WebP", quality=72, method=6, lossless=False)
                         print(f"Imagen convertida y guardada como: {webp_image_path}")
 
     except Exception as e:
