@@ -11,7 +11,7 @@ from pymongo import MongoClient
 
 load_dotenv()
 
-
+# --- --- --- Constants --- --- --- #
 MONGO_URL = os.getenv("MONGO_URL")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME")
 MONGO_USER = os.getenv("MONGO_USER")
@@ -29,10 +29,11 @@ IMAGES_FOLDER = "./web/static/assets/product-images"
 DOCUMENTS_FOLDER = "./web/static/data"
 
 COLLECTIONS = ["products", "categories", "subcategories"]
+# --- --- --- --------- --- --- --- #
 
 
+# Cambia los permisos de todos los archivos y carpetas dentro de 'folder'.
 def change_permissions(folder):
-    """Cambia los permisos de todos los archivos y carpetas dentro de 'folder'."""
     for root, dirs, files in os.walk(folder):
         for dir in dirs:
             os.chmod(os.path.join(root, dir), stat.S_IWRITE)
@@ -40,14 +41,14 @@ def change_permissions(folder):
             os.chmod(os.path.join(root, file), stat.S_IWRITE)
 
 
+# Cambia permisos y elimina archivos protegidos.
 def delete_with_permissions(func, path, _):
-    """Cambia permisos y elimina archivos protegidos."""
     os.chmod(path, stat.S_IWRITE)
     func(path)
 
 
+# Clona el repositorio de GitHub y maneja permisos.
 def clone_repo():
-    """Clona el repositorio de GitHub."""
     try:
         if os.path.exists(REPO_FOLDER):
             change_permissions(REPO_FOLDER)
@@ -58,19 +59,21 @@ def clone_repo():
         print(f"Error: {e}")
 
 
+# Connecta a la base de datos de MongoDB y retorna el cliente.
 def connect_to_mongo():
-    """Conecta a la base de datos de MongoDB."""
     try:
         connection_string = f"mongodb+srv://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_URL}/{MONGO_DB_NAME}"
         client = MongoClient(connection_string)
         client.server_info()
         return client
+
     except Exception as e:
         print(f"Error: {e}")
+        return None
 
 
+# Exporta las colecciones de MongoDB a archivos JSON.
 def export_collections(client):
-    """Exporta las colecciones de MongoDB a archivos JSON."""
     try:
         db = client[MONGO_DB_NAME]
 
@@ -90,8 +93,8 @@ def export_collections(client):
         print(f"Error: {e}")
 
 
+# Copia las imágenes desde la carpeta 'images' a 'product-images' y las convierte a WebP manteniendo su orientación.
 def copy_and_convert_images():
-    """Copia las imágenes desde la carpeta 'images' a 'product-images' y las convierte a WebP manteniendo su orientación."""
     try:
         if not os.path.exists(IMAGES_FOLDER):
             os.makedirs(IMAGES_FOLDER)
@@ -131,17 +134,18 @@ def copy_and_convert_images():
         print(f"Error al copiar y convertir imágenes: {e}")
 
 
+# Construye el sitio web utilizando npm.
 def build_site():
-    """Construye el sitio web."""
     try:
         subprocess.run(["npm", "i"], cwd=os.path.abspath(REPO_FOLDER), check=True, shell=True)
         subprocess.run(["npm", "run", "build"], cwd=os.path.abspath(REPO_FOLDER), check=True, shell=True)
+
     except Exception as e:
         print(f"Error: {e}")
 
 
+# Sube el contenido de la carpeta 'public' al servidor FTP.
 def upload_to_ftp():
-    """Sube el contenido de la carpeta 'public' al servidor FTP."""
     try:
         ftp = FTP(FTP_HOST)
         ftp.login(FTP_USER, FTP_PASSWORD)
@@ -193,6 +197,7 @@ def upload_to_ftp():
 
         ftp.quit()
         print("Proceso completado.")
+
     except Exception as e:
         print(f"Error general: {e}")
 
