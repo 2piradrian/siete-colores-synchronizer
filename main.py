@@ -8,6 +8,7 @@ from PIL import Image
 from ftplib import FTP
 from dotenv import load_dotenv
 from pymongo import MongoClient
+from multiprocessing import Pool, cpu_count
 
 
 load_dotenv()
@@ -93,6 +94,33 @@ def export_collections(client):
     except Exception as e:
         print(f"Error: {e}")
 
+# Procesa la imagen
+def process_image(file_info):
+    original_image_path, webp_image_path = file_info
+    try:
+        with Image.open(original_image_path) as img:
+            if hasattr(img, '_getexif') and img._getexif():
+                exif = dict(img._getexif().items())
+                orientation = exif.get(274, 1)
+                # Rotación según EXIF
+                if orientation == 2:
+                    img = img.transpose(Image.FLIP_LEFT_RIGHT)
+                elif orientation == 3:
+                    img = img.transpose(Image.ROTATE_180)
+                elif orientation == 4:
+                    img = img.transpose(Image.FLIP_TOP_BOTTOM)
+                elif orientation == 5:
+                    img = img.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.ROTATE_90)
+                elif orientation == 6:
+                    img = img.transpose(Image.ROTATE_270)
+                elif orientation == 7:
+                    img = img.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.ROTATE_270)
+                elif orientation == 8:
+                    img = img.transpose(Image.ROTATE_90)
+            img = img.convert("RGB")
+            save_image_with_target_size(img, webp_image_path, target_kb=120, min_quality=5, max_quality=95)
+    except Exception as e:
+        print(f"Error al procesar imagen {original_image_path}: {e}")
 
 # Guarda una imagen WebP ajustando la calidad para no superar el peso objetivo.
 def save_image_with_target_size(img, output_path, target_kb, min_quality, max_quality):
@@ -131,35 +159,17 @@ def copy_and_convert_images():
         if not os.path.exists(IMAGES_FOLDER):
             os.makedirs(IMAGES_FOLDER)
 
+        image_tasks = []
         for root, dirs, files in os.walk(USER_IMAGES_FOLDER):
             for file in files:
                 if file.lower().endswith((".jpg", ".jpeg", ".png")):
-                    print(f"Editando imagen: {file}")
                     original_image_path = os.path.join(root, file)
                     webp_image_path = os.path.join(IMAGES_FOLDER, os.path.splitext(file)[0] + ".webp")
+                    image_tasks.append((original_image_path, webp_image_path))
 
-                    with Image.open(original_image_path) as img:
-                        if hasattr(img, '_getexif') and img._getexif() is not None:
-                            exif = dict(img._getexif().items())
-                            orientation = exif.get(274, 1)
-
-                            if orientation == 2:
-                                img = img.transpose(Image.FLIP_LEFT_RIGHT)
-                            elif orientation == 3:
-                                img = img.transpose(Image.ROTATE_180)
-                            elif orientation == 4:
-                                img = img.transpose(Image.FLIP_TOP_BOTTOM)
-                            elif orientation == 5:
-                                img = img.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.ROTATE_90)
-                            elif orientation == 6:
-                                img = img.transpose(Image.ROTATE_270)
-                            elif orientation == 7:
-                                img = img.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.ROTATE_270)
-                            elif orientation == 8:
-                                img = img.transpose(Image.ROTATE_90)
-
-                        img = img.convert("RGB")
-                        save_image_with_target_size(img, webp_image_path, target_kb=120, min_quality=5, max_quality=95, step=5)
+        print(f"Procesando {len(image_tasks)} imágenes en paralelo...")
+        with Pool(cpu_count()) as pool:
+            pool.map(process_image, image_tasks)
 
     except Exception as e:
         print(f"Error al copiar y convertir imágenes: {e}")
