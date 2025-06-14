@@ -94,6 +94,7 @@ def export_collections(client):
     except Exception as e:
         print(f"Error: {e}")
 
+
 # Procesa la imagen
 def process_image(file_info):
     original_image_path, webp_image_path = file_info
@@ -122,6 +123,7 @@ def process_image(file_info):
     except Exception as e:
         print(f"Error al procesar imagen {original_image_path}: {e}")
 
+
 # Guarda una imagen WebP ajustando la calidad para no superar el peso objetivo.
 def save_image_with_target_size(img, output_path, target_kb, min_quality, max_quality):
     target_bytes = target_kb * 1024
@@ -132,7 +134,7 @@ def save_image_with_target_size(img, output_path, target_kb, min_quality, max_qu
     high = max_quality
 
     while low <= high:
-        mid = (low + high) // 2
+        mid = ((low + high) // 2) // 5 * 5  # Pasos de 5 en 5
         buffer = io.BytesIO()
         img.save(buffer, format="WebP", quality=mid, method=6, lossless=False)
         size = buffer.tell()
@@ -140,9 +142,9 @@ def save_image_with_target_size(img, output_path, target_kb, min_quality, max_qu
         if size <= target_bytes:
             best_quality = mid
             best_data = buffer.getvalue()
-            low = mid + 1
+            low = mid + 5
         else:
-            high = mid - 1
+            high = mid - 5
 
     if best_data:
         with open(output_path, "wb") as f:
