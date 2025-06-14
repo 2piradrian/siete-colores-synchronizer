@@ -1,3 +1,4 @@
+import io
 import os
 import json
 import stat
@@ -93,6 +94,32 @@ def export_collections(client):
         print(f"Error: {e}")
 
 
+# Guarda una imagen WebP ajustando la calidad para no superar el peso objetivo.
+def save_image_with_target_size(img, output_path, target_kb, min_quality, max_quality, step):
+    target_bytes = target_kb * 1024
+    best_quality = None
+    best_result = None
+
+    for quality in range(max_quality, min_quality - 1, -step):
+        buffer = io.BytesIO()
+        img.save(buffer, format="WebP", quality=quality, method=6, lossless=False)
+        size = buffer.tell()
+
+        if size <= target_bytes:
+            best_quality = quality
+            best_result = buffer.getvalue()
+            break
+
+    if best_result:
+        with open(output_path, "wb") as f:
+            f.write(best_result)
+        print(f"Guardado {output_path} con calidad {best_quality} ({size // 1024} KB)")
+    else:
+        # Si ninguna calidad logró bajar del tamaño, guarda con calidad mínima
+        img.save(output_path, "WebP", quality=min_quality, method=6, lossless=False)
+        print(f"Guardado {output_path} con calidad mínima ({min_quality}).")
+
+
 # Copia las imágenes desde la carpeta 'images' a 'product-images' y las convierte a WebP manteniendo su orientación.
 def copy_and_convert_images():
     try:
@@ -127,8 +154,7 @@ def copy_and_convert_images():
                                 img = img.transpose(Image.ROTATE_90)
 
                         img = img.convert("RGB")
-                        img.save(webp_image_path, "WebP", quality=72, method=6, lossless=False)
-                        print(f"Imagen convertida y guardada como: {webp_image_path}")
+                        save_image_with_target_size(img, webp_image_path, target_kb=120, min_quality=5, max_quality=95, step=5)
 
     except Exception as e:
         print(f"Error al copiar y convertir imágenes: {e}")
