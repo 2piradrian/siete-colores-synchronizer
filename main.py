@@ -95,27 +95,32 @@ def export_collections(client):
 
 
 # Guarda una imagen WebP ajustando la calidad para no superar el peso objetivo.
-def save_image_with_target_size(img, output_path, target_kb, min_quality, max_quality, step):
+def save_image_with_target_size(img, output_path, target_kb, min_quality, max_quality):
     target_bytes = target_kb * 1024
-    best_quality = None
-    best_result = None
+    best_quality = min_quality
+    best_data = None
 
-    for quality in range(max_quality, min_quality - 1, -step):
+    low = min_quality
+    high = max_quality
+
+    while low <= high:
+        mid = (low + high) // 2
         buffer = io.BytesIO()
-        img.save(buffer, format="WebP", quality=quality, method=6, lossless=False)
+        img.save(buffer, format="WebP", quality=mid, method=6, lossless=False)
         size = buffer.tell()
 
         if size <= target_bytes:
-            best_quality = quality
-            best_result = buffer.getvalue()
-            break
+            best_quality = mid
+            best_data = buffer.getvalue()
+            low = mid + 1
+        else:
+            high = mid - 1
 
-    if best_result:
+    if best_data:
         with open(output_path, "wb") as f:
-            f.write(best_result)
-        print(f"Guardado {output_path} con calidad {best_quality} ({size // 1024} KB)")
+            f.write(best_data)
+        print(f"Guardado {output_path} con calidad {best_quality} ({len(best_data) // 1024} KB)")
     else:
-        # Si ninguna calidad logró bajar del tamaño, guarda con calidad mínima
         img.save(output_path, "WebP", quality=min_quality, method=6, lossless=False)
         print(f"Guardado {output_path} con calidad mínima ({min_quality}).")
 
