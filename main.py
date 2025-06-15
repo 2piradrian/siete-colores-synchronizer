@@ -142,9 +142,9 @@ def save_image_with_target_size(img, output_path, target_kb, min_quality, max_qu
         if size <= target_bytes:
             best_quality = mid
             best_data = buffer.getvalue()
-            low = mid + 5
+            low = mid + 5 # Pasos de 5 en 5
         else:
-            high = mid - 5
+            high = mid - 5 # Pasos de 5 en 5
 
     if best_data:
         with open(output_path, "wb") as f:
