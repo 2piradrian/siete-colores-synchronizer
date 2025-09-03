@@ -26,7 +26,8 @@ FTP_PASSWORD = os.getenv("FTP_PASSWORD")
 REPO_URL = "https://github.com/2piradrian/siete-colores-web"
 REPO_FOLDER = "./web"
 
-USER_IMAGES_FOLDER = "./images"
+NEW_IMAGES_FOLDER = "./new-images"
+PROCESSED_IMAGES_FOLDER = "./images"
 IMAGES_FOLDER = "./web/static/assets/product-images"
 DOCUMENTS_FOLDER = "./web/static/data"
 
@@ -119,7 +120,7 @@ def process_image(file_info):
                 elif orientation == 8:
                     img = img.transpose(Image.ROTATE_90)
             img = img.convert("RGB")
-            save_image_with_target_size(img, webp_image_path, target_kb=120, min_quality=5, max_quality=95)
+            save_image_with_target_size(img, webp_image_path, target_kb=95, min_quality=5, max_quality=100)
     except Exception as e:
         print(f"Error al procesar imagen {original_image_path}: {e}")
 
@@ -149,39 +150,64 @@ def save_image_with_target_size(img, output_path, target_kb, min_quality, max_qu
     if best_data:
         with open(output_path, "wb") as f:
             f.write(best_data)
-        print(f"Guardado {output_path} con calidad {best_quality} ({len(best_data) // 1024} KB)")
+        print(f"Guardado {output_path} con calidad {best_quality} ({len(best_data) // 1024} KB).")
     else:
         img.save(output_path, "WebP", quality=min_quality, method=6, lossless=False)
         print(f"Guardado {output_path} con calidad mínima ({min_quality}).")
 
 
-# Copia las imágenes desde la carpeta 'images' a 'product-images' y las convierte a WebP manteniendo su orientación.
+# Convierte a WebP manteniendo su orientación, y las envía a la carpeta web.
 def copy_and_convert_images():
     try:
         if not os.path.exists(IMAGES_FOLDER):
             os.makedirs(IMAGES_FOLDER)
 
+        if not os.path.exists(NEW_IMAGES_FOLDER):
+            print(f"La carpeta {NEW_IMAGES_FOLDER} no existe. Nada que procesar.")
+            return
+
+        if not os.path.exists(PROCESSED_IMAGES_FOLDER):
+            os.makedirs(PROCESSED_IMAGES_FOLDER)
+
+        # --- Armar lista de tareas (entrada -> salida en ./images) ---
         image_tasks = []
-        for root, dirs, files in os.walk(USER_IMAGES_FOLDER):
+        for root, dirs, files in os.walk(NEW_IMAGES_FOLDER):
             for file in files:
                 if file.lower().endswith((".jpg", ".jpeg", ".png")):
-                    original_image_path = os.path.join(root, file)
-                    webp_image_path = os.path.join(IMAGES_FOLDER, os.path.splitext(file)[0] + ".webp")
-                    image_tasks.append((original_image_path, webp_image_path))
+                    src = os.path.join(root, file)
+                    dst = os.path.join(
+                        PROCESSED_IMAGES_FOLDER, os.path.splitext(file)[0] + ".webp"
+                    )
+                    image_tasks.append((src, dst))
 
         print(f"Procesando {len(image_tasks)} imágenes en paralelo...")
+
         with Pool(cpu_count()) as pool:
             pool.map(process_image, image_tasks)
 
+        # --- Copiar todas las imágenes procesadas a ./web/... ---
+        for file in os.listdir(PROCESSED_IMAGES_FOLDER):
+            if file.lower().endswith(".webp"):
+                src = os.path.join(PROCESSED_IMAGES_FOLDER, file)
+                dst = os.path.join(IMAGES_FOLDER, file)
+                shutil.copy2(src, dst)
+                print(f"Copiado: {src} -> {dst}")
+
+        # --- Limpiar carpeta new-images (solo los originales) ---
+        for root, dirs, files in os.walk(NEW_IMAGES_FOLDER):
+            for file in files:
+                os.remove(os.path.join(root, file))
+        print("Carpeta new-images limpiada.")
+
     except Exception as e:
-        print(f"Error al copiar y convertir imágenes: {e}")
+        print(f"Error en copy_and_convert_images: {e}")
 
 
 # Construye el sitio web utilizando npm.
 def build_site():
     try:
-        subprocess.run(["npm", "i"], cwd=os.path.abspath(REPO_FOLDER), check=True, shell=True)
-        subprocess.run(["npm", "run", "build"], cwd=os.path.abspath(REPO_FOLDER), check=True, shell=True)
+        subprocess.run(["npm", "i"], cwd=os.path.abspath(REPO_FOLDER), check=True)
+        subprocess.run(["npm", "run", "build"], cwd=os.path.abspath(REPO_FOLDER), check=True)
 
     except Exception as e:
         print(f"Error: {e}")
