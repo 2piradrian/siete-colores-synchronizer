@@ -203,7 +203,6 @@ def copy_and_convert_images():
         print(f"Error en copy_and_convert_images: {e}")
 
 
-
 # Construye el sitio web utilizando npm.
 def build_site():
     try:
