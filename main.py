@@ -31,7 +31,7 @@ PROCESSED_IMAGES_FOLDER = "./images"
 IMAGES_FOLDER = "./web/static/assets/product-images"
 DOCUMENTS_FOLDER = "./web/static/data"
 
-COLLECTIONS = ["products", "categories", "subcategories"]
+COLLECTIONS = ["products", "categories", "subcategories", "shippings"]
 # --- --- --- --------- --- --- --- #
 
 
@@ -201,6 +201,7 @@ def copy_and_convert_images():
 
     except Exception as e:
         print(f"Error en copy_and_convert_images: {e}")
+
 
 
 # Construye el sitio web utilizando npm.
